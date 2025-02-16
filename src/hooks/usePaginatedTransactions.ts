@@ -13,16 +13,33 @@ export function usePaginatedTransactions(): PaginatedTransactionsResult {
     const response = await fetchWithCache<PaginatedResponse<Transaction[]>, PaginatedRequestParams>(
       "paginatedTransactions",
       {
-        page: paginatedTransactions === null ? 0 : paginatedTransactions.nextPage,
+        page: 0,
+      }
+    )
+    setPaginatedTransactions(response)
+  }, [fetchWithCache])
+
+  // new method for loading more / the rest...
+  const fetchMore = useCallback(async () => {
+    if (!paginatedTransactions || paginatedTransactions.nextPage === null) {
+      return
+    }
+
+    const response = await fetchWithCache<PaginatedResponse<Transaction[]>, PaginatedRequestParams>(
+      "paginatedTransactions",
+      {
+        page: paginatedTransactions.nextPage,
       }
     )
 
-    setPaginatedTransactions((previousResponse) => {
-      if (response === null || previousResponse === null) {
-        return response
-      }
+    if (response === null) return
 
-      return { data: response.data, nextPage: response.nextPage }
+    setPaginatedTransactions((previousResponse) => {
+      if (!previousResponse) return response
+      return {
+        data: [...previousResponse.data, ...response.data],
+        nextPage: response.nextPage,
+      }
     })
   }, [fetchWithCache, paginatedTransactions])
 
@@ -30,5 +47,5 @@ export function usePaginatedTransactions(): PaginatedTransactionsResult {
     setPaginatedTransactions(null)
   }, [])
 
-  return { data: paginatedTransactions, loading, fetchAll, invalidateData }
+  return { data: paginatedTransactions, loading, fetchAll, fetchMore, invalidateData }
 }
